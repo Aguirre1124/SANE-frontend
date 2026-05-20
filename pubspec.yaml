@@ -46,6 +46,9 @@ dependencies:
   flutter_secure_storage: ^9.2.2    # Para guardar JWT en móvil
   shared_preferences: ^2.3.3        # Fallback web + key-value general
 
+  # ── WebSocket ──────────────────────────────
+  web_socket_channel: ^2.4.0        # Chat streaming
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
