@@ -3,33 +3,78 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // ── Fondos ──────────────────────────────────────────────
-  static const Color background  = Color(0xFF080808); // negro casi puro
-  static const Color surface     = Color(0xFF111111); // cards / superficies
-  static const Color surfaceHigh = Color(0xFF1A1A1A); // cards elevadas / hover
+  // ══════════════════════════════════════════════════════════════════
+  // 🎨 BACKGROUNDS (Dark Mode Base)
+  // ══════════════════════════════════════════════════════════════════
 
-  // ── Acento primario (botones, links, activo) ────────────
-  static const Color primary     = Color(0xFFE8E8E8); // blanco/gris claro
-  static const Color primaryHover = Color(0xFFFFFFFF);
-  static const Color onPrimary   = Color(0xFF080808); // texto negro sobre botón
+  static const Color background = Color(0xFF0F0F0F); // Pure dark background
+  static const Color surface = Color(0xFF1A1A1A); // Primary surface for cards
+  static const Color surfaceAlt = Color(0xFF252525); // Alternative surface
+  static const Color surfaceHigh = Color(0xFF2D2D2D); // Elevated surfaces, hover states
 
-  // ── Estados ─────────────────────────────────────────────
-  static const Color success = Color(0xFF22C55E);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color error   = Color(0xFFEF4444);
-  static const Color info    = Color(0xFF38BDF8);
+  // ══════════════════════════════════════════════════════════════════
+  // 🎨 PRIMARY ACCENT (Bright Cyan - Vibrant Blue)
+  // ══════════════════════════════════════════════════════════════════
 
-  // ── Texto ───────────────────────────────────────────────
-  static const Color textPrimary   = Color(0xFFE8E8E8); // casi blanco
-  static const Color textSecondary = Color(0xFF8A8A8A); // gris medio
-  static const Color textMuted     = Color(0xFF555555); // gris oscuro
+  static const Color primary = Color(0xFF00C9FF); // Bright cyan/blue
+  static const Color primaryLight = Color(0xFF80E7FF); // Light cyan
+  static const Color primaryDark = Color(0xFF0099BB); // Dark cyan
+  static const Color onPrimary = Color(0xFF000000); // Black text on bright bg
 
-  // ── Bordes / divisores ──────────────────────────────────
-  static const Color border = Color(0xFF252525);
+  // ══════════════════════════════════════════════════════════════════
+  // 🎨 ACCENT COLORS (Bright Lime Green - Vibrant)
+  // ══════════════════════════════════════════════════════════════════
 
-  // ── Categorias de iconos del diagnostico ───────────────
-  static const Color catHome   = Color(0xFFE8E8E8);
-  static const Color catMobile = Color(0xFF22C55E);
-  static const Color catLocal  = Color(0xFF8B5CF6);
-  static const Color catPlant  = Color(0xFFF59E0B);
+  static const Color secondary = Color(0xFF00FF88); // Bright lime green
+  static const Color secondaryLight = Color(0xFF80FFCC); // Light lime
+  static const Color tertiary = Color(0xFF00FF99); // Teal accent
+
+  // ══════════════════════════════════════════════════════════════════
+  // 🎨 SEMANTIC COLORS (Status indicators)
+  // ══════════════════════════════════════════════════════════════════
+
+  static const Color success = Color(0xFF10B981); // Emerald green
+  static const Color successLight = Color(0xFF34D399);
+  static const Color warning = Color(0xFFF59E0B); // Amber
+  static const Color warningLight = Color(0xFFFFBF4C);
+  static const Color error = Color(0xFFEF4444); // Red
+  static const Color errorLight = Color(0xFFF87171);
+  static const Color info = Color(0xFF06B6D4); // Cyan info
+
+  // ══════════════════════════════════════════════════════════════════
+  // 🎨 TEXT COLORS (Hierarchy)
+  // ══════════════════════════════════════════════════════════════════
+
+  static const Color textPrimary = Color(0xFFFAFAFA); // Almost white - primary text
+  static const Color textSecondary = Color(0xFFA3A3A3); // Gray - secondary text
+  static const Color textMuted = Color(0xFF6B7280); // Muted gray - tertiary text
+  static const Color textDisabled = Color(0xFF4B5563); // Disabled state
+
+  // ══════════════════════════════════════════════════════════════════
+  // 🎨 BORDERS & DIVIDERS
+  // ══════════════════════════════════════════════════════════════════
+
+  static const Color border = Color(0xFF2D2D2D); // Primary border
+  static const Color borderLight = Color(0xFF404040); // Light border for hover/focus
+  static const Color divider = Color(0xFF1F1F1F); // Subtle divider
+
+  // ══════════════════════════════════════════════════════════════════
+  // 🎨 GLASS MORPHISM (Frosted glass effects)
+  // ══════════════════════════════════════════════════════════════════
+
+  static const Color glassSurface = Color(0x1AFFFFFF); // 10% white overlay
+  static const Color glassLight = Color(0x33FFFFFF); // 20% white overlay
+
+  // ══════════════════════════════════════════════════════════════════
+  // 🎨 DIAGNOSTIC CATEGORIES (Risk levels - Updated palette)
+  // ══════════════════════════════════════════════════════════════════
+
+  static const Color catHome = Color(0xFF00C9FF); // Cyan primary
+  static const Color catMobile = Color(0xFF00FF88); // Lime green secondary
+  static const Color catLocal = Color(0xFF00FF99); // Teal accent
+  static const Color catPlant = Color(0xFF00FFB3); // Bright mint
+  static const Color catFoodService = Color(0xFF00E0FF); // Light cyan
+  static const Color catRiskHigh = Color(0xFFEF4444); // Error red
+  static const Color catRiskMedium = Color(0xFFF59E0B); // Warning amber
+  static const Color catRiskLow = Color(0xFF00FF88); // Green success
 }
