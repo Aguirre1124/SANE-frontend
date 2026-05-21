@@ -11,12 +11,16 @@ class ChatSession {
     required this.status,
   });
 
-  factory ChatSession.fromJson(Map<String, dynamic> j) => ChatSession(
-        chatId: j['chat_id'] as String,
-        entrepreneurId: j['entrepreneur_id'] as String,
-        sessionType: j['session_type'] as String,
-        status: j['status'] as String,
-      );
+  factory ChatSession.fromJson(Map<String, dynamic> j) {
+    // El backend puede devolver chat_id o id
+    final chatId = (j['chat_id'] ?? j['id'] ?? j['session_id'] ?? '').toString();
+    return ChatSession(
+      chatId: chatId,
+      entrepreneurId: (j['entrepreneur_id'] ?? j['user_id'] ?? '').toString(),
+      sessionType: (j['session_type'] ?? 'general_legal').toString(),
+      status: (j['status'] ?? 'open').toString(),
+    );
+  }
 }
 
 class ChatMessage {
@@ -35,12 +39,12 @@ class ChatMessage {
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> j) => ChatMessage(
-        id: j['id'] as String,
-        role: j['role'] as String,
-        content: j['content'] as String,
+        id: (j['id'] ?? '') as String,
+        role: (j['role'] ?? 'user') as String,
+        content: (j['content'] ?? '') as String,
         createdAt: j['created_at'] as String?,
         sourceDocs: (j['source_docs'] as List? ?? [])
-            .map((e) => e as String)
+            .map((e) => e.toString())
             .toList(),
       );
 

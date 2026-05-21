@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../core/api/api_client.dart';
+import '../core/api/api_exception.dart';
 import '../core/storage/token_storage.dart';
 import '../models/chat_model.dart';
 
@@ -66,7 +67,9 @@ class ChatNotifier
       if (arg != null) body['business_id'] = arg;
 
       final res = await dio.post('/chat/start', data: body);
-      final session = ChatSession.fromJson(res.data as Map<String, dynamic>);
+      final data = res.data;
+      if (data == null) throw const ApiException('Respuesta vacía del servidor', 0);
+      final session = ChatSession.fromJson(data as Map<String, dynamic>);
 
       await _loadHistory(session.chatId);
       await _connectWebSocket(session.chatId);
@@ -74,11 +77,16 @@ class ChatNotifier
       state = AsyncData((state.asData?.value ?? const ChatState())
           .copyWith(session: session));
     } on DioException catch (e) {
+      state = AsyncError(dioToApi(e), StackTrace.current);
       throw dioToApi(e);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;
     }
   }
 
   Future<void> _loadHistory(String chatId) async {
+    if (chatId.isEmpty) return;
     try {
       final dio = ref.read(dioProvider);
       final res = await dio.get('/chat/$chatId/history');
@@ -88,8 +96,8 @@ class ChatNotifier
         (state.asData?.value ?? const ChatState())
             .copyWith(messages: history.messages),
       );
-    } on DioException {
-      // History might not exist yet, ignore
+    } catch (_) {
+      // Historial vacío o sesión nueva — ignorar
     }
   }
 

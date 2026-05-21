@@ -111,8 +111,10 @@ class DiagnosticFlowNotifier
 
       if (!answer.isCompleted) {
         final qRes = await dio.get('/diagnostic/$sessionId/questions');
-        final nextQ = DiagnosticQuestion.fromJson(
-            qRes.data as Map<String, dynamic>);
+        final body = qRes.data as Map<String, dynamic>;
+        // El endpoint devuelve un wrapper: {"question": {...}, "finished": bool, ...}
+        final questionData = (body['question'] ?? body) as Map<String, dynamic>;
+        final nextQ = DiagnosticQuestion.fromJson(questionData);
         state = AsyncData(currentState.copyWith(
           currentQuestion: nextQ,
           answeredCount: answer.totalAnswers,

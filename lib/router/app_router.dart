@@ -33,17 +33,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = authState.asData?.value != null;
       final loc = state.matchedLocation;
 
-      if (isLoading) {
-        return loc == '/splash' ? null : '/splash';
-      }
+      if (isLoading) return loc == '/splash' ? null : '/splash';
 
       final isAuthRoute = loc == '/login' || loc == '/register';
-      if (!isLoggedIn && !isAuthRoute && loc != '/splash') {
-        return '/login';
-      }
-      if (isLoggedIn && (isAuthRoute || loc == '/splash')) {
-        return '/app/home';
-      }
+      if (!isLoggedIn && !isAuthRoute && loc != '/splash') return '/login';
+      if (isLoggedIn && (isAuthRoute || loc == '/splash')) return '/app/home';
       return null;
     },
     routes: [
@@ -59,82 +53,91 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/register',
         builder: (c, s) => const RegisterScreen(),
       ),
+
+      // ── Rutas de detalle (full-screen, encima del shell) ──────────
+      GoRoute(
+        path: '/app/business/create',
+        parentNavigatorKey: _rootKey,
+        builder: (c, s) => const CreateBusinessScreen(),
+      ),
+      GoRoute(
+        path: '/app/business/:id',
+        parentNavigatorKey: _rootKey,
+        builder: (c, s) => BusinessDetailScreen(
+          businessId: s.pathParameters['id']!,
+        ),
+        routes: [
+          GoRoute(
+            path: 'edit',
+            parentNavigatorKey: _rootKey,
+            builder: (c, s) => EditBusinessScreen(
+              businessId: s.pathParameters['id']!,
+            ),
+          ),
+          GoRoute(
+            path: 'diagnostics',
+            parentNavigatorKey: _rootKey,
+            builder: (c, s) => DiagnosticListScreen(
+              businessId: s.pathParameters['id']!,
+            ),
+          ),
+          GoRoute(
+            path: 'chat',
+            parentNavigatorKey: _rootKey,
+            builder: (c, s) => ChatScreen(
+              businessId: s.pathParameters['id']!,
+            ),
+          ),
+          GoRoute(
+            path: 'progress',
+            parentNavigatorKey: _rootKey,
+            builder: (c, s) => ProgressScreen(
+              businessId: s.pathParameters['id']!,
+            ),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/app/diagnostic/:sessionId/question',
+        parentNavigatorKey: _rootKey,
+        builder: (c, s) => QuestionScreen(
+          sessionId: s.pathParameters['sessionId']!,
+          businessId: (s.extra as Map?)?['businessId'] as String?,
+        ),
+      ),
+      GoRoute(
+        path: '/app/diagnostic/:sessionId/result',
+        parentNavigatorKey: _rootKey,
+        builder: (c, s) => DiagnosticResultScreen(
+          sessionId: s.pathParameters['sessionId']!,
+          preloadedResult:
+              s.extra is DiagnosticResult ? s.extra as DiagnosticResult : null,
+        ),
+      ),
+      GoRoute(
+        path: '/app/routes/:routeId',
+        parentNavigatorKey: _rootKey,
+        builder: (c, s) => RouteDetailScreen(
+          routeId: s.pathParameters['routeId']!,
+          businessId: (s.extra as Map?)?['businessId'] as String?,
+        ),
+      ),
+
+      // ── Shell con tabs ─────────────────────────────────────────────
       StatefulShellRoute.indexedStack(
-        builder: (context, state, shell) => ShellScreen(navigationShell: shell),
+        builder: (context, state, shell) =>
+            ShellScreen(navigationShell: shell),
         branches: [
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/app/home',
               builder: (c, s) => const HomeScreen(),
-              routes: [
-                GoRoute(
-                  path: 'business/create',
-                  builder: (c, s) => const CreateBusinessScreen(),
-                ),
-                GoRoute(
-                  path: 'business/:id',
-                  builder: (_, s) => BusinessDetailScreen(
-                    businessId: s.pathParameters['id']!,
-                  ),
-                  routes: [
-                    GoRoute(
-                      path: 'edit',
-                      builder: (_, s) => EditBusinessScreen(
-                        businessId: s.pathParameters['id']!,
-                      ),
-                    ),
-                    GoRoute(
-                      path: 'diagnostics',
-                      builder: (_, s) => DiagnosticListScreen(
-                        businessId: s.pathParameters['id']!,
-                      ),
-                    ),
-                    GoRoute(
-                      path: 'chat',
-                      builder: (_, s) => ChatScreen(
-                        businessId: s.pathParameters['id']!,
-                      ),
-                    ),
-                    GoRoute(
-                      path: 'progress',
-                      builder: (_, s) => ProgressScreen(
-                        businessId: s.pathParameters['id']!,
-                      ),
-                    ),
-                  ],
-                ),
-                GoRoute(
-                  path: 'diagnostic/:sessionId/question',
-                  builder: (_, s) => QuestionScreen(
-                    sessionId: s.pathParameters['sessionId']!,
-                    businessId: (s.extra as Map?)?['businessId'] as String?,
-                  ),
-                ),
-                GoRoute(
-                  path: 'diagnostic/:sessionId/result',
-                  builder: (_, s) => DiagnosticResultScreen(
-                    sessionId: s.pathParameters['sessionId']!,
-                    preloadedResult: s.extra is DiagnosticResult
-                        ? s.extra as DiagnosticResult
-                        : null,
-                  ),
-                ),
-              ],
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/app/routes',
               builder: (c, s) => const RouteListScreen(),
-              routes: [
-                GoRoute(
-                  path: ':routeId',
-                  builder: (_, s) => RouteDetailScreen(
-                    routeId: s.pathParameters['routeId']!,
-                    businessId: (s.extra as Map?)?['businessId'] as String?,
-                  ),
-                ),
-              ],
             ),
           ]),
           StatefulShellBranch(routes: [
@@ -148,9 +151,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 
-  ref.listen(authProvider, (prev, next) {
-    router.refresh();
-  });
+  ref.listen(authProvider, (prev, next) => router.refresh());
 
   return router;
 });
