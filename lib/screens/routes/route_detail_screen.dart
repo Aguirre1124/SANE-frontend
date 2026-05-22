@@ -1,10 +1,13 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api/api_exception.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../models/route_model.dart';
 import '../../providers/route_provider.dart';
+import '../../widgets/animated_orbs_background.dart';
 import '../../widgets/error_view.dart';
 import '../../widgets/responsive_layout.dart';
 import '../../widgets/status_chip.dart';
@@ -74,51 +77,75 @@ class _RouteDetailScreenState extends ConsumerState<RouteDetailScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Detalle de ruta')),
-      body: routeAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ErrorView(
-          error: e,
-          onRetry: () => ref.invalidate(routeDetailProvider(widget.routeId)),
-        ),
-        data: (route) => ResponsiveCenter(
-          padding: const EdgeInsets.all(20),
-          child: ListView(
+      body: AnimatedOrbsBackground(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _RouteHeader(route: route),
-              const SizedBox(height: 20),
-              if (route.steps != null && route.steps!.isNotEmpty) ...[
-                Text('Pasos del trámite',
-                    style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 12),
-                ...route.steps!
-                    .map((step) => _StepCard(step: step)),
-              ] else
-                const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text(
-                      'No hay pasos detallados para esta ruta.',
-                      style: TextStyle(color: AppColors.textMuted),
+              const _DetailHeader(),
+              Expanded(
+                child: routeAsync.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                  error: (e, _) => ErrorView(
+                    error: e,
+                    onRetry: () =>
+                        ref.invalidate(routeDetailProvider(widget.routeId)),
+                  ),
+                  data: (route) => ResponsiveCenter(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      AppSpacing.xxxl,
+                    ),
+                    child: ListView(
+                      children: [
+                        _RouteInfoCard(route: route),
+                        const SizedBox(height: AppSpacing.xl),
+                        if (route.steps != null &&
+                            route.steps!.isNotEmpty) ...[
+                          Text(
+                            'Pasos del trámite',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          ...route.steps!
+                              .map((step) => _StepCard(step: step)),
+                        ] else
+                          const Card(
+                            child: Padding(
+                              padding: EdgeInsets.all(AppSpacing.lg),
+                              child: Text(
+                                'No hay pasos detallados para esta ruta.',
+                                style: TextStyle(color: AppColors.textMuted),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: AppSpacing.xxl),
+                        ElevatedButton.icon(
+                          onPressed: _assigning ? null : _assignRoute,
+                          icon: _assigning
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.play_arrow),
+                          label: Text(
+                            _assigning ? 'Iniciando...' : 'Iniciar esta ruta',
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xxl),
+                      ],
                     ),
                   ),
                 ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: _assigning ? null : _assignRoute,
-                icon: _assigning
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(Icons.play_arrow),
-                label: Text(_assigning
-                    ? 'Iniciando...'
-                    : 'Iniciar esta ruta'),
               ),
-              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -127,8 +154,71 @@ class _RouteDetailScreenState extends ConsumerState<RouteDetailScreen> {
   }
 }
 
-class _RouteHeader extends StatelessWidget {
-  const _RouteHeader({required this.route});
+// ── Header glassmorphism ──────────────────────────────────────────────────────
+
+class _DetailHeader extends StatelessWidget {
+  const _DetailHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: AppColors.glassSurface,
+            border: Border(
+              bottom: BorderSide(color: AppColors.borderLight, width: 1),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.sm,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+          ),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                onPressed: () => context.pop(),
+                tooltip: 'Volver',
+                style: IconButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                ),
+              ),
+              Image.asset(
+                'assets/images/sane_logo_mark.png',
+                width: 34,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Detalle de ruta', style: tt.headlineMedium),
+                    const SizedBox(height: 2),
+                    Text('Pasos y documentos requeridos', style: tt.bodySmall),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Tarjeta de información general de la ruta ─────────────────────────────────
+
+class _RouteInfoCard extends StatelessWidget {
+  const _RouteInfoCard({required this.route});
 
   final RouteModel route;
 
@@ -141,20 +231,23 @@ class _RouteHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(route.name, style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 8),
-            Text(route.description,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textPrimary,
-                      height: 1.5,
-                    )),
-            const SizedBox(height: 16),
+            Text(route.name,
+                style: Theme.of(context).textTheme.headlineMedium),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              route.description,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textPrimary,
+                    height: 1.5,
+                  ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
             StatusChip(value: route.tramiteType, type: ChipType.tramiteType),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Row(
               children: [
                 Expanded(
@@ -173,13 +266,13 @@ class _RouteHeader extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             _Stat(
               icon: Icons.account_balance_outlined,
               label: 'Entidad',
               value: route.targetEntity,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             _Stat(
               icon: Icons.library_books_outlined,
               label: 'Normativa',
@@ -227,6 +320,8 @@ class _Stat extends StatelessWidget {
   }
 }
 
+// ── Tarjeta de paso (expandible) ──────────────────────────────────────────────
+
 class _StepCard extends StatefulWidget {
   const _StepCard({required this.step});
 
@@ -243,14 +338,14 @@ class _StepCardState extends State<_StepCard> {
   Widget build(BuildContext context) {
     final step = widget.step;
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Column(
         children: [
           InkWell(
             onTap: () => setState(() => _expanded = !_expanded),
             borderRadius: BorderRadius.circular(16),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               child: Row(
                 children: [
                   Container(
@@ -269,7 +364,7 @@ class _StepCardState extends State<_StepCard> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,8 +372,8 @@ class _StepCardState extends State<_StepCard> {
                         Text(step.title,
                             style: Theme.of(context).textTheme.titleLarge),
                         if (step.isOptional)
-                          Text('Opcional',
-                              style: const TextStyle(
+                          const Text('Opcional',
+                              style: TextStyle(
                                   color: AppColors.textMuted, fontSize: 12)),
                       ],
                     ),
@@ -293,19 +388,20 @@ class _StepCardState extends State<_StepCard> {
           ),
           if (_expanded)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Divider(color: AppColors.border),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(step.description,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppColors.textPrimary,
                             height: 1.5,
                           )),
                   if (step.entityName != null) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: AppSpacing.md),
                     _StepDetail(
                         icon: Icons.account_balance_outlined,
                         text: step.entityName!),
@@ -314,7 +410,7 @@ class _StepCardState extends State<_StepCard> {
                     _StepDetail(
                         icon: Icons.location_on_outlined,
                         text: step.entityAddress!),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpacing.md),
                   Row(
                     children: [
                       Expanded(
@@ -333,13 +429,13 @@ class _StepCardState extends State<_StepCard> {
                     ],
                   ),
                   if (step.documents.isNotEmpty) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
                     Text('Documentos requeridos',
                         style: Theme.of(context)
                             .textTheme
                             .bodyMedium
                             ?.copyWith(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpacing.sm),
                     ...step.documents.map(
                       (doc) => Padding(
                         padding: const EdgeInsets.only(bottom: 4),
