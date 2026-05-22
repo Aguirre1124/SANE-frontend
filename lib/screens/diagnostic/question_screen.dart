@@ -1,10 +1,16 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api/api_exception.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../models/diagnostic_model.dart';
 import '../../providers/diagnostic_provider.dart';
+import '../../widgets/animated_orbs_background.dart';
+import '../../widgets/empty_state.dart';
+import '../../widgets/error_view.dart';
+import '../../widgets/premium_card.dart';
 import '../../widgets/responsive_layout.dart';
 
 class QuestionScreen extends ConsumerStatefulWidget {
@@ -32,68 +38,78 @@ class _QuestionScreenState extends ConsumerState<QuestionScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Diagnóstico sanitario')),
-      body: flowAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Text(e.toString(),
-              style: const TextStyle(color: AppColors.error)),
-        ),
-        data: (flow) {
-          if (flow == null) {
-            return const Center(
-              child: Text(
-                'Sin sesión activa. Vuelve atrás e inicia un diagnóstico.',
-                textAlign: TextAlign.center,
+      body: AnimatedOrbsBackground(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _QuestionHeader(
+                onBack: () => context.pop(),
               ),
-            );
-          }
-
-          return ResponsiveCenter(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                _ProgressHeader(
-                  answered: flow.answeredCount,
-                  total: flow.totalQuestions,
-                ),
-                const SizedBox(height: 24),
-                Expanded(
-                  child: _QuestionCard(
-                    question: flow.currentQuestion,
-                    selectedOptionId: _selectedOptionId,
-                    onOptionSelected: (id, value) {
-                      setState(() {
-                        _selectedOptionId = id;
-                        _selectedValue = value;
-                      });
+              Expanded(
+                child: flowAsync.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  error: (e, _) => ErrorView(
+                    error: e,
+                    onRetry: () {
+                      ref.invalidate(diagnosticFlowProvider(flowKey));
                     },
                   ),
+                  data: (flow) {
+                    if (flow == null) {
+                      return const EmptyState(
+                        icon: Icons.error_outline,
+                        title: 'Sin sesión activa',
+                        subtitle:
+                            'Vuelve atrás e inicia un diagnóstico.',
+                      );
+                    }
+
+                    return ResponsiveCenter(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      child: Column(
+                        children: [
+                          _ProgressHeader(
+                            answered: flow.answeredCount,
+                            total: flow.totalQuestions,
+                          ),
+                          const SizedBox(height: AppSpacing.xl),
+                          Expanded(
+                            child: _QuestionCard(
+                              question: flow.currentQuestion,
+                              selectedOptionId: _selectedOptionId,
+                              onOptionSelected: (id, value) {
+                                setState(() {
+                                  _selectedOptionId = id;
+                                  _selectedValue = value;
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          _NextButton(
+                            isEnabled: _selectedOptionId != null,
+                            isLoading: flowAsync.value?.isSubmitting ?? false,
+                            onPressed: (flow.isSubmitting ||
+                                    _selectedOptionId == null)
+                                ? null
+                                : () => _answer(
+                                    context, ref, flow, flowKey),
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                        ],
+                      ),
+                    );
+                  },
                 ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: (flow.isSubmitting ||
-                            _selectedOptionId == null)
-                        ? null
-                        : () => _answer(
-                            context, ref, flow, flowKey),
-                    child: flow.isSubmitting
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text('Siguiente'),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          );
-        },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -158,20 +174,37 @@ class _ProgressHeader extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('Pregunta ${answered + 1} de $total',
-                style: Theme.of(context).textTheme.bodyMedium),
-            Text('${(progress * 100).toInt()}%',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: AppColors.success)),
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    )),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.xs,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSmall),
+              ),
+              child: Text(
+                '${(progress * 100).toInt()}%',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.lg),
         ClipRRect(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusSmall),
           child: LinearProgressIndicator(
             value: progress,
-            minHeight: 6,
+            minHeight: 8,
+            backgroundColor: AppColors.surface,
+            valueColor: const AlwaysStoppedAnimation(AppColors.primary),
           ),
         ),
       ],
@@ -196,28 +229,32 @@ class _QuestionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          PremiumCard(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            enableHoverEffect: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  question.text,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                ),
+                if (question.helpText != null) ...[
+                  const SizedBox(height: AppSpacing.lg),
                   Text(
-                    question.text,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    question.helpText!,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                   ),
-                  if (question.helpText != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      question.helpText!,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
                 ],
-              ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.xl),
           ...question.options.map(
             (opt) => _OptionTile(
               option: opt,
@@ -244,46 +281,214 @@ class _OptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.12)
-              : AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.border,
-            width: isSelected ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              isSelected
-                  ? Icons.radio_button_checked
-                  : Icons.radio_button_off,
-              color: isSelected ? AppColors.primary : AppColors.textMuted,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                option.label,
-                style: TextStyle(
-                  color: isSelected
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary,
-                  fontWeight:
-                      isSelected ? FontWeight.w500 : FontWeight.normal,
-                ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? AppColors.primary.withValues(alpha: 0.08)
+                  : AppColors.surface.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+              border: Border.all(
+                color: isSelected ? AppColors.primary : AppColors.border,
+                width: isSelected ? 2 : 1,
               ),
             ),
-          ],
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    isSelected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    color: isSelected ? AppColors.primary : AppColors.textMuted,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.lg),
+                Expanded(
+                  child: Text(
+                    option.label,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: isSelected
+                              ? AppColors.textPrimary
+                              : AppColors.textSecondary,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Header glassmorphism ──────────────────────────────────────────────────────
+
+class _QuestionHeader extends StatelessWidget {
+  const _QuestionHeader({required this.onBack});
+
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: AppColors.glassSurface,
+            border: Border(
+              bottom: BorderSide(color: AppColors.borderLight, width: 1),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+          ),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+                onPressed: onBack,
+                tooltip: 'Volver',
+                style: IconButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Diagnóstico', style: tt.headlineMedium),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Responde las preguntas',
+                      style: tt.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Next Button with glow ────────────────────────────────────────────────────
+
+class _NextButton extends StatefulWidget {
+  const _NextButton({
+    required this.isEnabled,
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  final bool isEnabled;
+  final bool isLoading;
+  final VoidCallback? onPressed;
+
+  @override
+  State<_NextButton> createState() => _NextButtonState();
+}
+
+class _NextButtonState extends State<_NextButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _glowController;
+  late Animation<double> _glowAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _glowController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _glowAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _glowController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: AnimatedBuilder(
+        animation: _glowAnimation,
+        builder: (context, child) {
+          return Container(
+            decoration: widget.isEnabled && !widget.isLoading
+                ? BoxDecoration(
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(
+                          alpha: 0.3 * _glowAnimation.value,
+                        ),
+                        blurRadius: 16 * _glowAnimation.value,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  )
+                : null,
+            child: ElevatedButton(
+              onPressed: widget.onPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.onPrimary,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xl,
+                  vertical: AppSpacing.lg,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppSpacing.radiusMedium),
+                ),
+                elevation: widget.isEnabled ? 8 : 0,
+              ),
+              child: widget.isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      'Siguiente',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: AppColors.onPrimary,
+                          ),
+                    ),
+            ),
+          );
+        },
       ),
     );
   }
