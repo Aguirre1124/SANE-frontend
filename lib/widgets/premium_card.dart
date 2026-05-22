@@ -1,6 +1,7 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
+import '../core/theme/app_colors.dart';
+import '../core/theme/app_spacing.dart';
 
 /// Premium animated card with powerful shadow, gradient, and depth effects
 class PremiumCard extends StatefulWidget {
@@ -82,50 +83,44 @@ class _PremiumCardState extends State<PremiumCard>
           builder: (context, child) {
             return Transform.scale(
               scale: _scaleAnimation.value,
-              child: Container(
-                decoration: BoxDecoration(
-                  // Gradient background (strong visual)
-                  gradient: widget.backgroundGradient ??
-                      LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppColors.surface,
-                          AppColors.surfaceAlt,
+              child: RepaintBoundary(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.glassSurface,
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
+                        border: widget.border ??
+                            Border.all(
+                              color: AppColors.borderLight,
+                              width: 1,
+                            ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.25),
+                            blurRadius: 12 * _shadowAnimation.value,
+                            offset: Offset(0, 4 * _shadowAnimation.value),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 24 * _shadowAnimation.value,
+                            offset: Offset(0, 8 * _shadowAnimation.value),
+                          ),
+                          if (widget.enableGlow)
+                            BoxShadow(
+                              color: AppColors.primary.withOpacity(0.15),
+                              blurRadius: 16 * _shadowAnimation.value,
+                              offset: const Offset(0, 0),
+                            ),
                         ],
                       ),
-                  color: widget.backgroundColor,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
-                  border: widget.border ??
-                      Border.all(
-                        color: AppColors.borderLight,
-                        width: 1.5,
-                      ),
-                  // POWERFUL SHADOWS - strong depth effect
-                  boxShadow: [
-                    // Base shadow
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      blurRadius: 12 * _shadowAnimation.value,
-                      offset: Offset(0, 4 * _shadowAnimation.value),
+                      padding: widget.padding,
+                      child: widget.child,
                     ),
-                    // Secondary shadow for depth
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 24 * _shadowAnimation.value,
-                      offset: Offset(0, 8 * _shadowAnimation.value),
-                    ),
-                    // Glow effect
-                    if (widget.enableGlow)
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.15),
-                        blurRadius: 16 * _shadowAnimation.value,
-                        offset: const Offset(0, 0),
-                      ),
-                  ],
+                  ),
                 ),
-                padding: widget.padding,
-                child: widget.child,
               ),
             );
           },

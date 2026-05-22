@@ -1,9 +1,15 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../core/api/api_exception.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../providers/business_provider.dart';
+import '../../widgets/animated_button.dart';
+import '../../widgets/animated_orbs_background.dart';
 import '../../widgets/responsive_layout.dart';
 
 const _productTypes = [
@@ -36,8 +42,7 @@ class CreateBusinessScreen extends ConsumerStatefulWidget {
       _CreateBusinessScreenState();
 }
 
-class _CreateBusinessScreenState
-    extends ConsumerState<CreateBusinessScreen>
+class _CreateBusinessScreenState extends ConsumerState<CreateBusinessScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs;
   final _formKey = GlobalKey<FormState>();
@@ -117,61 +122,154 @@ class _CreateBusinessScreenState
 
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: AppColors.error));
+      SnackBar(content: Text(msg), backgroundColor: AppColors.error),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Nuevo negocio'),
-        bottom: TabBar(
-          controller: _tabs,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textMuted,
-          indicatorColor: AppColors.primary,
-          tabs: const [
-            Tab(text: 'Producto'),
-            Tab(text: 'Operación'),
-            Tab(text: 'Empleados'),
-          ],
-        ),
-      ),
       body: Form(
         key: _formKey,
-        child: ResponsiveCenter(
-          padding: const EdgeInsets.all(20),
-          child: TabBarView(
-            controller: _tabs,
-            physics: const NeverScrollableScrollPhysics(),
+        child: AnimatedOrbsBackground(
+          child: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _GlassHeader(tabs: _tabs),
+                Expanded(
+                  child: ResponsiveCenter(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      AppSpacing.xxxl,
+                    ),
+                    child: TabBarView(
+                      controller: _tabs,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        _Tab1(
+                          tradeNameCtrl: _tradeNameCtrl,
+                          productType: _productType,
+                          onProductTypeChanged: (v) =>
+                              setState(() => _productType = v),
+                          onNext: _nextTab,
+                        ),
+                        _Tab2(
+                          operationPlace: _operationPlace,
+                          isPackaged: _isPackaged,
+                          hasBrand: _hasBrand,
+                          hasLabel: _hasLabel,
+                          salesScope: _salesScope,
+                          onOperationPlaceChanged: (v) =>
+                              setState(() => _operationPlace = v),
+                          onPackagedChanged: (v) =>
+                              setState(() => _isPackaged = v),
+                          onBrandChanged: (v) => setState(() => _hasBrand = v),
+                          onLabelChanged: (v) => setState(() => _hasLabel = v),
+                          onSalesScopeChanged: (v) =>
+                              setState(() => _salesScope = v),
+                          onNext: _nextTab,
+                          onBack: _prevTab,
+                        ),
+                        _Tab3(
+                          employeeCtrl: _employeeCtrl,
+                          isSubmitting: _isSubmitting,
+                          onBack: _prevTab,
+                          onSubmit: _submit,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Header con glassmorphism + TabBar ─────────────────────────────────────────
+
+class _GlassHeader extends StatelessWidget {
+  const _GlassHeader({required this.tabs});
+
+  final TabController tabs;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: AppColors.glassSurface,
+            border: Border(
+              bottom: BorderSide(color: AppColors.borderLight, width: 1),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _Tab1(
-                tradeNameCtrl: _tradeNameCtrl,
-                productType: _productType,
-                onProductTypeChanged: (v) => setState(() => _productType = v),
-                onNext: _nextTab,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      onPressed: () => context.pop(),
+                      color: AppColors.textPrimary,
+                      tooltip: 'Volver',
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Nuevo negocio',
+                            style:
+                                Theme.of(context).textTheme.headlineMedium,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Completa los datos del establecimiento',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Image.asset(
+                      'assets/images/sane_logo_mark.png',
+                      width: 34,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
               ),
-              _Tab2(
-                operationPlace: _operationPlace,
-                isPackaged: _isPackaged,
-                hasBrand: _hasBrand,
-                hasLabel: _hasLabel,
-                salesScope: _salesScope,
-                onOperationPlaceChanged: (v) =>
-                    setState(() => _operationPlace = v),
-                onPackagedChanged: (v) => setState(() => _isPackaged = v),
-                onBrandChanged: (v) => setState(() => _hasBrand = v),
-                onLabelChanged: (v) => setState(() => _hasLabel = v),
-                onSalesScopeChanged: (v) => setState(() => _salesScope = v),
-                onNext: _nextTab,
-                onBack: _prevTab,
-              ),
-              _Tab3(
-                employeeCtrl: _employeeCtrl,
-                isSubmitting: _isSubmitting,
-                onBack: _prevTab,
-                onSubmit: _submit,
+              TabBar(
+                controller: tabs,
+                labelColor: AppColors.primary,
+                unselectedLabelColor: AppColors.textMuted,
+                indicatorColor: AppColors.primary,
+                indicatorWeight: 2,
+                dividerColor: Colors.transparent,
+                tabs: const [
+                  Tab(text: 'Producto'),
+                  Tab(text: 'Operación'),
+                  Tab(text: 'Empleados'),
+                ],
               ),
             ],
           ),
@@ -180,6 +278,8 @@ class _CreateBusinessScreenState
     );
   }
 }
+
+// ── Tab 1: Producto ───────────────────────────────────────────────────────────
 
 class _Tab1 extends StatelessWidget {
   const _Tab1({
@@ -198,37 +298,41 @@ class _Tab1 extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       children: [
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         TextFormField(
           controller: tradeNameCtrl,
           decoration: const InputDecoration(
             labelText: 'Nombre comercial *',
             prefixIcon: Icon(Icons.store_outlined),
           ),
-          validator: (v) => (v == null || v.trim().isEmpty)
-              ? 'El nombre es requerido'
-              : null,
+          validator: (v) =>
+              (v == null || v.trim().isEmpty) ? 'El nombre es requerido' : null,
         ),
-        const SizedBox(height: 24),
-        Text('Tipo de producto *',
-            style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.xxl),
+        Text(
+          'Tipo de producto *',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: AppSpacing.md),
         ..._productTypes.map((t) => _RadioTile(
               value: t.$1,
               label: t.$2,
               groupValue: productType,
               onChanged: onProductTypeChanged,
             )),
-        const SizedBox(height: 24),
-        ElevatedButton(
+        const SizedBox(height: AppSpacing.xxl),
+        _GlowButton(
           onPressed: onNext,
-          child: const Text('Siguiente'),
+          label: 'Siguiente',
+          icon: Icons.arrow_forward_rounded,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
       ],
     );
   }
 }
+
+// ── Tab 2: Operación ──────────────────────────────────────────────────────────
 
 class _Tab2 extends StatelessWidget {
   const _Tab2({
@@ -263,20 +367,24 @@ class _Tab2 extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       children: [
-        const SizedBox(height: 8),
-        Text('Lugar de operación *',
-            style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'Lugar de operación *',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: AppSpacing.md),
         ..._operationPlaces.map((p) => _RadioTile(
               value: p.$1,
               label: p.$2,
               groupValue: operationPlace,
               onChanged: onOperationPlaceChanged,
             )),
-        const SizedBox(height: 20),
-        Text('Características del producto',
-            style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.xl),
+        Text(
+          'Características del producto',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: AppSpacing.sm),
         _CheckTile(
           label: '¿El producto va empacado?',
           value: isPackaged,
@@ -292,35 +400,39 @@ class _Tab2 extends StatelessWidget {
           value: hasLabel,
           onChanged: onLabelChanged,
         ),
-        const SizedBox(height: 20),
-        Text('Alcance de ventas *',
-            style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.xl),
+        Text(
+          'Alcance de ventas *',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: AppSpacing.md),
         ..._salesScopes.map((s) => _RadioTile(
               value: s.$1,
               label: s.$2,
               groupValue: salesScope,
               onChanged: onSalesScopeChanged,
             )),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.xxl),
         Row(
           children: [
+            Expanded(child: _SecondaryButton(onPressed: onBack, label: 'Anterior')),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
-              child: OutlinedButton(
-                  onPressed: onBack, child: const Text('Anterior')),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton(
-                  onPressed: onNext, child: const Text('Siguiente')),
+              child: _GlowButton(
+                onPressed: onNext,
+                label: 'Siguiente',
+                icon: Icons.arrow_forward_rounded,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
       ],
     );
   }
 }
+
+// ── Tab 3: Empleados ──────────────────────────────────────────────────────────
 
 class _Tab3 extends StatelessWidget {
   const _Tab3({
@@ -339,10 +451,12 @@ class _Tab3 extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       children: [
-        const SizedBox(height: 16),
-        Text('Información laboral',
-            style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.lg),
+        Text(
+          'Información laboral',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: AppSpacing.xl),
         TextFormField(
           controller: employeeCtrl,
           keyboardType: TextInputType.number,
@@ -357,25 +471,19 @@ class _Tab3 extends StatelessWidget {
             return null;
           },
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppSpacing.xxxl),
         Row(
           children: [
             Expanded(
-              child: OutlinedButton(
-                  onPressed: onBack, child: const Text('Anterior')),
+              child: _SecondaryButton(onPressed: onBack, label: 'Anterior'),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
-              child: ElevatedButton(
-                onPressed: isSubmitting ? null : onSubmit,
-                child: isSubmitting
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('Crear negocio'),
+              child: _GlowButton(
+                onPressed: onSubmit,
+                label: 'Crear negocio',
+                icon: Icons.check_rounded,
+                isLoading: isSubmitting,
               ),
             ),
           ],
@@ -384,6 +492,83 @@ class _Tab3 extends StatelessWidget {
     );
   }
 }
+
+// ── Botón primario con glow (wrapper de AnimatedElevatedButton) ───────────────
+
+class _GlowButton extends StatelessWidget {
+  const _GlowButton({
+    required this.onPressed,
+    required this.label,
+    required this.icon,
+    this.isLoading = false,
+  });
+
+  final VoidCallback onPressed;
+  final String label;
+  final IconData icon;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: AppSpacing.buttonHeight,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: AnimatedElevatedButton(
+        onPressed: onPressed,
+        isLoading: isLoading,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(label),
+            if (!isLoading) ...[
+              const SizedBox(width: AppSpacing.sm),
+              Icon(icon, size: AppSpacing.iconSmall),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Botón secundario (Anterior) ───────────────────────────────────────────────
+
+class _SecondaryButton extends StatelessWidget {
+  const _SecondaryButton({required this.onPressed, required this.label});
+
+  final VoidCallback onPressed;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: AppSpacing.buttonHeight,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.arrow_back_rounded, size: AppSpacing.iconSmall),
+        label: Text(label),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.textSecondary,
+          side: const BorderSide(color: AppColors.borderLight),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Radio tile ────────────────────────────────────────────────────────────────
 
 class _RadioTile extends StatelessWidget {
   const _RadioTile({
@@ -403,15 +588,18 @@ class _RadioTile extends StatelessWidget {
     final selected = groupValue == value;
     return InkWell(
       onTap: () => onChanged(value),
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
         decoration: BoxDecoration(
           color: selected
               ? AppColors.primary.withValues(alpha: 0.1)
               : AppColors.surface,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
           border: Border.all(
             color: selected ? AppColors.primary : AppColors.border,
             width: selected ? 1.5 : 1,
@@ -422,18 +610,19 @@ class _RadioTile extends StatelessWidget {
             Icon(
               selected ? Icons.radio_button_checked : Icons.radio_button_off,
               color: selected ? AppColors.primary : AppColors.textMuted,
-              size: 20,
+              size: AppSpacing.iconMedium,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
-              child: Text(label,
-                  style: TextStyle(
-                    color: selected
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
-                    fontWeight:
-                        selected ? FontWeight.w500 : FontWeight.normal,
-                  )),
+              child: Text(
+                label,
+                style: TextStyle(
+                  color:
+                      selected ? AppColors.textPrimary : AppColors.textSecondary,
+                  fontWeight:
+                      selected ? FontWeight.w500 : FontWeight.normal,
+                ),
+              ),
             ),
           ],
         ),
@@ -441,6 +630,8 @@ class _RadioTile extends StatelessWidget {
     );
   }
 }
+
+// ── Check tile ────────────────────────────────────────────────────────────────
 
 class _CheckTile extends StatelessWidget {
   const _CheckTile({
@@ -457,15 +648,18 @@ class _CheckTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () => onChanged(!value),
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
         decoration: BoxDecoration(
           color: value
               ? AppColors.success.withValues(alpha: 0.08)
               : AppColors.surface,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
           border: Border.all(
             color: value ? AppColors.success : AppColors.border,
           ),
@@ -475,16 +669,18 @@ class _CheckTile extends StatelessWidget {
             Icon(
               value ? Icons.check_box : Icons.check_box_outline_blank,
               color: value ? AppColors.success : AppColors.textMuted,
-              size: 20,
+              size: AppSpacing.iconMedium,
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
-              child: Text(label,
-                  style: TextStyle(
-                    color: value
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
-                  )),
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: value
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
+                ),
+              ),
             ),
           ],
         ),

@@ -1,10 +1,33 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../core/api/api_exception.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
+import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/animated_orbs_background.dart';
+import '../../widgets/error_view.dart';
+import '../../widgets/premium_card.dart';
 import '../../widgets/responsive_layout.dart';
+import '../../widgets/shimmer_loader.dart';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+String _initials(String name) {
+  final parts = name.trim().split(RegExp(r'\s+'));
+  if (parts.isEmpty || parts[0].isEmpty) return '?';
+  if (parts.length == 1) return parts[0][0].toUpperCase();
+  return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+}
+
+String _formatRole(String role) =>
+    role == 'entrepreneur' ? 'Emprendedor' : role;
+
+// ── Pantalla ──────────────────────────────────────────────────────────────────
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -15,85 +38,110 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Perfil')),
-      body: authAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Text(e.toString(),
-              style: const TextStyle(color: AppColors.error)),
+      body: AnimatedOrbsBackground(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _GlassHeader(),
+              Expanded(
+                child: authAsync.when(
+                  loading: () => const _ProfileSkeleton(),
+                  error: (e, _) => ErrorView(
+                    error: e,
+                    onRetry: () => ref.invalidate(authProvider),
+                  ),
+                  data: (user) {
+                    if (user == null) {
+                      return const Center(
+                        child: Text(
+                          'No hay sesión activa.',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                      );
+                    }
+                    return ResponsiveCenter(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.xxxl,
+                      ),
+                      child: ListView(
+                        children: [
+                          // ── Tarjeta de usuario ──────────────────────────
+                          _UserCard(user: user),
+                          const SizedBox(height: AppSpacing.xl),
+                          // ── Opciones de cuenta ──────────────────────────
+                          PremiumCard(
+                            padding: EdgeInsets.zero,
+                            backgroundGradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                AppColors.surface,
+                                AppColors.surfaceAlt,
+                              ],
+                            ),
+                            border: Border.all(
+                              color: AppColors.borderLight,
+                              width: 1,
+                            ),
+                            enableGlow: false,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _OptionRow(
+                                  icon: Icons.verified_user_outlined,
+                                  iconColor: AppColors.info,
+                                  label: 'Estado',
+                                  trailing:
+                                      _StatusBadge(status: user.status),
+                                  isFirst: true,
+                                ),
+                                const Divider(
+                                  height: 1,
+                                  color: AppColors.divider,
+                                  indent: AppSpacing.lg +
+                                      36 +
+                                      AppSpacing.md,
+                                ),
+                                _OptionRow(
+                                  icon: Icons.edit_outlined,
+                                  iconColor: AppColors.primary,
+                                  label: 'Editar perfil',
+                                  onTap: () =>
+                                      _editProfile(context, ref, user.name),
+                                  trailing: const Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  isLast: true,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xl),
+                          // ── Cerrar sesión ───────────────────────────────
+                          _LogoutButton(
+                            onPressed: () =>
+                                ref.read(authProvider.notifier).logout(),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          // ── Eliminar cuenta ─────────────────────────────
+                          _DangerButton(
+                            onPressed: () => _confirmDelete(context, ref),
+                          ),
+                          const SizedBox(height: AppSpacing.xxl),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
-        data: (user) {
-          if (user == null) {
-            return const Center(child: Text('No hay sesión activa.'));
-          }
-          return ResponsiveCenter(
-            padding: const EdgeInsets.all(20),
-            child: ListView(
-              children: [
-                const SizedBox(height: 16),
-                Center(
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.person,
-                        size: 44, color: AppColors.primary),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Center(
-                  child: Text(user.name,
-                      style: Theme.of(context).textTheme.titleLarge),
-                ),
-                const SizedBox(height: 4),
-                Center(
-                  child: Text(user.email,
-                      style: Theme.of(context).textTheme.bodyMedium),
-                ),
-                const SizedBox(height: 4),
-                Center(
-                  child: Text(
-                    user.role == 'entrepreneur' ? 'Emprendedor' : user.role,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyMedium
-                        ?.copyWith(color: AppColors.info),
-                  ),
-                ),
-                const SizedBox(height: 32),
-                _InfoTile(
-                    label: 'Estado',
-                    value: user.status == 'active' ? 'Activo' : user.status),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () => _editProfile(context, ref, user.name),
-                  icon: const Icon(Icons.edit_outlined),
-                  label: const Text('Editar perfil'),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () => ref.read(authProvider.notifier).logout(),
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Cerrar sesión'),
-                ),
-                const SizedBox(height: 24),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.error,
-                    side: const BorderSide(color: AppColors.error),
-                  ),
-                  onPressed: () => _confirmDelete(context, ref),
-                  icon: const Icon(Icons.delete_forever_outlined),
-                  label: const Text('Eliminar cuenta'),
-                ),
-                const SizedBox(height: 32),
-              ],
-            ),
-          );
-        },
       ),
     );
   }
@@ -118,18 +166,21 @@ class ProfileScreen extends ConsumerWidget {
             TextField(
               controller: phoneCtrl,
               decoration: const InputDecoration(
-                  labelText: 'Teléfono (opcional)',
-                  hintText: '+573001234567'),
+                labelText: 'Teléfono (opcional)',
+                hintText: '+573001234567',
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
           ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Guardar')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Guardar'),
+          ),
         ],
       ),
     );
@@ -142,13 +193,16 @@ class ProfileScreen extends ConsumerWidget {
             );
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Perfil actualizado')));
+            const SnackBar(content: Text('Perfil actualizado')),
+          );
         }
       } on ApiException catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text(e.message), backgroundColor: AppColors.error),
+              content: Text(e.message),
+              backgroundColor: AppColors.error,
+            ),
           );
         }
       }
@@ -162,14 +216,17 @@ class ProfileScreen extends ConsumerWidget {
         backgroundColor: AppColors.surface,
         title: const Text('Eliminar cuenta'),
         content: const Text(
-            '¿Estás seguro? Esta acción es irreversible. Tu cuenta quedará anonimizada.'),
+          '¿Estás seguro? Esta acción es irreversible. Tu cuenta quedará anonimizada.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
           ElevatedButton(
-            style:
-                ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Eliminar'),
           ),
@@ -185,7 +242,9 @@ class ProfileScreen extends ConsumerWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text(e.message), backgroundColor: AppColors.error),
+              content: Text(e.message),
+              backgroundColor: AppColors.error,
+            ),
           );
         }
       }
@@ -193,34 +252,408 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-class _InfoTile extends StatelessWidget {
-  const _InfoTile({required this.label, required this.value});
+// ── Header glass (pantalla raíz — sin botón de volver) ────────────────────────
 
-  final String label;
-  final String value;
+class _GlassHeader extends StatelessWidget {
+  const _GlassHeader();
 
   @override
   Widget build(BuildContext context) {
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: AppColors.glassSurface,
+            border: Border(
+              bottom: BorderSide(color: AppColors.borderLight, width: 1),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xxl,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Perfil',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Tu información de cuenta',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              Image.asset(
+                'assets/images/sane_logo_mark.png',
+                width: 34,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Tarjeta de usuario ────────────────────────────────────────────────────────
+
+class _UserCard extends StatelessWidget {
+  const _UserCard({required this.user});
+
+  final UserModel user;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      backgroundGradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [AppColors.surface, AppColors.surfaceAlt],
+      ),
+      border: Border.all(color: AppColors.primary, width: 1),
+      child: Column(
+        children: [
+          // Avatar con gradiente e iniciales
+          Container(
+            width: 80,
+            height: 80,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primary, AppColors.primaryLight],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                _initials(user.name),
+                style: const TextStyle(
+                  color: AppColors.onPrimary,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            user.name,
+            style: Theme.of(context).textTheme.headlineSmall,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            user.email,
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: AppColors.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          // Chip de rol
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.xs,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.info.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppColors.info.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Text(
+              _formatRole(user.role),
+              style: const TextStyle(
+                color: AppColors.info,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Fila de opción dentro de una card ─────────────────────────────────────────
+
+class _OptionRow extends StatelessWidget {
+  const _OptionRow({
+    required this.icon,
+    required this.label,
+    required this.trailing,
+    this.iconColor = AppColors.textSecondary,
+    this.onTap,
+    this.isFirst = false,
+    this.isLast = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final Widget trailing;
+  final Color iconColor;
+  final VoidCallback? onTap;
+  final bool isFirst;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.vertical(
+        top: isFirst
+            ? const Radius.circular(AppSpacing.radiusLarge)
+            : Radius.zero,
+        bottom: isLast
+            ? const Radius.circular(AppSpacing.radiusLarge)
+            : Radius.zero,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.12),
+                borderRadius:
+                    BorderRadius.circular(AppSpacing.radiusSmall),
+              ),
+              child: Icon(icon, color: iconColor, size: 18),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyLarge
+                    ?.copyWith(color: AppColors.textPrimary),
+              ),
+            ),
+            trailing,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Badge de estado ───────────────────────────────────────────────────────────
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = status == 'active';
+    final color = isActive ? AppColors.success : AppColors.warning;
+    final label = isActive ? 'Activo' : status;
+
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: AppColors.textSecondary)),
-          Text(value,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w500,
-                  )),
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Botón cerrar sesión ───────────────────────────────────────────────────────
+
+class _LogoutButton extends StatelessWidget {
+  const _LogoutButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: AppSpacing.buttonHeight,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.logout_rounded),
+        label: const Text('Cerrar sesión'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.textSecondary,
+          side: const BorderSide(color: AppColors.borderLight),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Botón eliminar cuenta (zona peligrosa) ────────────────────────────────────
+
+class _DangerButton extends StatelessWidget {
+  const _DangerButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: AppSpacing.buttonHeight,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.delete_forever_outlined),
+        label: const Text('Eliminar cuenta'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.error,
+          side: const BorderSide(color: AppColors.error),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Skeleton de carga ─────────────────────────────────────────────────────────
+
+class _ProfileSkeleton extends StatelessWidget {
+  const _ProfileSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ResponsiveCenter(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Tarjeta de usuario
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
+              border: Border.all(color: AppColors.borderLight),
+            ),
+            child: Column(
+              children: [
+                ShimmerLoader(
+                  width: 80,
+                  height: 80,
+                  borderRadius: BorderRadius.circular(40),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                const ShimmerLoader(height: 22),
+                const SizedBox(height: AppSpacing.sm),
+                const ShimmerLoader(height: 16),
+                const SizedBox(height: AppSpacing.md),
+                ShimmerLoader(
+                  width: 90,
+                  height: 24,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          // Tarjeta de opciones
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
+              border: Border.all(color: AppColors.borderLight),
+            ),
+            child: Column(
+              children: List.generate(2, (i) {
+                return Column(
+                  children: [
+                    if (i > 0)
+                      const Divider(height: 1, color: AppColors.divider),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                        vertical: AppSpacing.md,
+                      ),
+                      child: Row(
+                        children: [
+                          ShimmerLoader(
+                            width: 36,
+                            height: 36,
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusSmall,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          const Expanded(child: ShimmerLoader(height: 16)),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          ShimmerLoader(
+            height: AppSpacing.buttonHeight,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          ShimmerLoader(
+            height: AppSpacing.buttonHeight,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+          ),
         ],
       ),
     );

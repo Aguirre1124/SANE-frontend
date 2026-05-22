@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_spacing.dart';
@@ -48,35 +49,34 @@ class _AnimatedBottomNavBarState extends State<AnimatedBottomNavBar>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        border: Border(
-          top: BorderSide(
-            color: AppColors.border,
-            width: 1,
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusLarge)),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.glassSurface,
+            border: Border(
+              top: BorderSide(
+                color: AppColors.borderLight,
+                width: 1,
+              ),
+            ),
           ),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: List.generate(
-            widget.items.length,
-            (index) => _BottomNavItem(
-              item: widget.items[index],
-              isSelected: index == widget.currentIndex,
-              onTap: () => widget.onTap(index),
-              animationController: _animationController,
-              isAnimating: index == widget.currentIndex,
+          child: SafeArea(
+            top: false,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: List.generate(
+                widget.items.length,
+                (index) => _BottomNavItem(
+                  item: widget.items[index],
+                  isSelected: index == widget.currentIndex,
+                  onTap: () => widget.onTap(index),
+                  animationController: _animationController,
+                  isAnimating: index == widget.currentIndex,
+                ),
+              ),
             ),
           ),
         ),
