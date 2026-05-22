@@ -1,12 +1,14 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../providers/auth_provider.dart';
-import '../../widgets/responsive_layout.dart';
 import '../../widgets/animated_button.dart';
-import '../../widgets/gradient_text.dart';
+import '../../widgets/animated_orbs_background.dart';
+import '../../widgets/responsive_layout.dart';
+import '../../widgets/sane_logo.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -17,9 +19,9 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  late final AnimationController _fadeController;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<Offset> _slideAnimation;
 
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
@@ -30,20 +32,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   void initState() {
     super.initState();
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 900),
       vsync: this,
     );
-
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeIn),
     );
-
     _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
-            .animate(
+        Tween<Offset>(begin: const Offset(0, 0.25), end: Offset.zero).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeOutCubic),
     );
-
     _fadeController.forward();
   }
 
@@ -74,95 +72,169 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(authProvider).isLoading;
+    final tt = Theme.of(context).textTheme;
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: ResponsiveCenter(
-          padding: const EdgeInsets.all(AppSpacing.xxl),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Spacer(flex: 2),
-                    _AnimatedLogo(),
-                    const SizedBox(height: 40),
-                    GradientText(
-                      'Iniciar sesión',
-                      baseStyle:
-                          Theme.of(context).textTheme.headlineMedium,
-                      gradient: const LinearGradient(
-                        colors: [
-                          AppColors.primary,
-                          AppColors.secondary,
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Accede a tu cuenta SANE',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: AppSpacing.xxxl),
-                    TextFormField(
-                      controller: _emailCtrl,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        labelText: 'Correo electrónico',
-                        prefixIcon: Icon(Icons.email_outlined),
-                      ),
-                      validator: (v) => (v == null || !v.contains('@'))
-                          ? 'Email inválido'
-                          : null,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    TextFormField(
-                      controller: _passCtrl,
-                      obscureText: _obscure,
-                      decoration: InputDecoration(
-                        labelText: 'Contraseña',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscure
-                              ? Icons.visibility
-                              : Icons.visibility_off),
-                          onPressed: () =>
-                              setState(() => _obscure = !_obscure),
-                        ),
-                      ),
-                      validator: (v) => (v == null || v.length < 6)
-                          ? 'Mínimo 6 caracteres'
-                          : null,
-                    ),
-                    const SizedBox(height: AppSpacing.xxl),
-                    AnimatedElevatedButton(
-                      onPressed: _submit,
-                      isLoading: isLoading,
-                      child: const Text('Entrar'),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+      body: AnimatedOrbsBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+            child: ResponsiveCenter(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        const SizedBox(height: 56),
+
+                        // Logo
+                        const Center(child: SaneLogo()),
+                        const SizedBox(height: 32),
+
+                        // Título + subtítulo
                         Text(
-                          '¿No tienes cuenta?',
-                          style: Theme.of(context).textTheme.bodyMedium,
+                          'Iniciar sesión',
+                          textAlign: TextAlign.center,
+                          style: tt.headlineMedium,
                         ),
-                        TextButton(
-                          onPressed: () => context.go('/register'),
-                          child: const Text('Regístrate'),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Ingresa con tu correo',
+                          textAlign: TextAlign.center,
+                          style: tt.bodyMedium,
                         ),
+                        const SizedBox(height: 32),
+
+                        // Card con glassmorphism
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
+                          child: BackdropFilter(
+                            filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                            child: Container(
+                              padding: const EdgeInsets.all(AppSpacing.xxl),
+                              decoration: BoxDecoration(
+                                color: AppColors.glassSurface,
+                                borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
+                                border: Border.all(
+                                  color: AppColors.borderLight,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Campo correo
+                                  TextFormField(
+                                    controller: _emailCtrl,
+                                    keyboardType: TextInputType.emailAddress,
+                                    autofillHints: const [AutofillHints.email],
+                                    decoration: const InputDecoration(
+                                      labelText: 'Correo electrónico',
+                                      prefixIcon: Icon(Icons.email_outlined),
+                                    ),
+                                    validator: (v) =>
+                                        (v == null || !v.contains('@'))
+                                            ? 'Email inválido'
+                                            : null,
+                                  ),
+                                  const SizedBox(height: AppSpacing.lg),
+
+                                  // Campo contraseña
+                                  TextFormField(
+                                    controller: _passCtrl,
+                                    obscureText: _obscure,
+                                    autofillHints: const [AutofillHints.password],
+                                    decoration: InputDecoration(
+                                      labelText: 'Contraseña',
+                                      prefixIcon: const Icon(Icons.lock_outline),
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          _obscure
+                                              ? Icons.visibility_outlined
+                                              : Icons.visibility_off_outlined,
+                                        ),
+                                        onPressed: () =>
+                                            setState(() => _obscure = !_obscure),
+                                        tooltip: _obscure
+                                            ? 'Mostrar contraseña'
+                                            : 'Ocultar contraseña',
+                                      ),
+                                    ),
+                                    validator: (v) => (v == null || v.length < 6)
+                                        ? 'Mínimo 6 caracteres'
+                                        : null,
+                                  ),
+                                  const SizedBox(height: AppSpacing.xs),
+
+                                  // Olvidé mi contraseña
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: () {},
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: AppSpacing.sm,
+                                          vertical: AppSpacing.xs,
+                                        ),
+                                        textStyle: const TextStyle(fontSize: 13),
+                                      ),
+                                      child: const Text('¿Olvidaste tu contraseña?'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xxl),
+
+                        // Botón principal con glow
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.38),
+                                blurRadius: 22,
+                                spreadRadius: 1,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: SizedBox(
+                            height: 52,
+                            child: AnimatedElevatedButton(
+                              onPressed: _submit,
+                              isLoading: isLoading,
+                              child: const Text('Iniciar sesión'),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+
+                        // Enlace a registro
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '¿No tienes cuenta?',
+                              style: tt.bodyMedium,
+                            ),
+                            TextButton(
+                              onPressed: () => context.go('/register'),
+                              child: const Text('Regístrate'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
                       ],
                     ),
-                    const Spacer(flex: 3),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -172,91 +244,3 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 }
-
-class _AnimatedLogo extends StatefulWidget {
-  @override
-  State<_AnimatedLogo> createState() => _AnimatedLogoState();
-}
-
-class _AnimatedLogoState extends State<_AnimatedLogo>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _rotateAnimation;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-
-    _rotateAnimation = Tween<double>(begin: -0.1, end: 0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
-    );
-
-    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
-
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: Listenable.merge([_rotateAnimation, _scaleAnimation]),
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _scaleAnimation.value,
-          child: Transform.rotate(
-            angle: _rotateAnimation.value,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.primary, AppColors.primaryLight],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.4),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(Icons.verified_user,
-                      color: AppColors.onPrimary, size: 26),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'SANE',
-                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.5,
-                      ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
